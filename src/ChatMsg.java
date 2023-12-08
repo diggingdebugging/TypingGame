@@ -7,8 +7,12 @@ public class ChatMsg implements Serializable {
 	public final static int MODE_LOGIN  = 0x1;
 	public final static int MODE_LOGOUT  = 0x2;
 	public final static int MODE_TX_STRING  = 0x10;
+	public final static int MODE_TX_START  = 0x11;
+	public final static int MODE_TX_FINISH  = 0x12;
 	public final static int MODE_TX_FILE  = 0x20;
 	public final static int MODE_TX_IMAGE = 0x40;
+	public final static int MODE_TX_TEXTFILE = 0x50;
+	public final static int MODE_TX_CORRECT = 0x60;
 	
 	//같은 패키지안에서는 getter나 setter를 사용하지 않아도 접근이 가능
 	String userID;
@@ -16,6 +20,8 @@ public class ChatMsg implements Serializable {
 	String message;
 	ImageIcon image;
 	long size;
+	String fileName;
+	byte[] fileData;
 	
 	public ChatMsg(String userID, int code, String message, ImageIcon image, long size) {
 		this.userID = userID;
@@ -35,6 +41,12 @@ public class ChatMsg implements Serializable {
 
 	public ChatMsg(String userID, int code, String message) {
 		this(userID, code, message, null);
+	}
+	
+	public ChatMsg(String fileName, int code, byte[] fileData ) {
+		this.fileName = fileName;
+		this.mode = code;
+		this.fileData = fileData;
 	}
 	
 	public ChatMsg(String userID, int code, ImageIcon image) {

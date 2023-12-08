@@ -1,8 +1,10 @@
 
 //1871139 신유진
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Container;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
@@ -14,6 +16,7 @@ import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
@@ -40,6 +43,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
+import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultStyledDocument;
@@ -63,6 +67,9 @@ public class TypingGameClient extends JFrame {
 	private JTextField t_hostAddr;
 	private JTextField t_portNum;
 	private String uid;
+	private JPanel displayPanel;
+	private String[] strArr;
+	private JLabel [] wordLabels; 
 
 	public TypingGameClient(String serverAddress, int serverPort) {// 생성
 		this.serverAddress = serverAddress;
@@ -89,13 +96,16 @@ public class TypingGameClient extends JFrame {
 	}
 
 	private JPanel createDisplayPanel() {
-		JPanel displayPanel = new JPanel();
-		displayPanel.setLayout(new BorderLayout());
+		displayPanel = new JPanel();
+		// displayPanel.setLayout(new BorderLayout());
+		displayPanel.setLayout(new GridLayout(3, 3));
+		displayPanel.setBackground(Color.WHITE);
+		// displayPanel.setSize();
+		// document = new DefaultStyledDocument();
+		// t_display = new JTextPane(document);
+		// t_display.setEditable(false);
+		// displayPanel.add(new JScrollPane(t_display), BorderLayout.CENTER);
 
-		document = new DefaultStyledDocument();
-		t_display = new JTextPane(document);
-		t_display.setEditable(false);
-		displayPanel.add(new JScrollPane(t_display), BorderLayout.CENTER);
 		return displayPanel;
 	}
 
@@ -274,10 +284,50 @@ public class TypingGameClient extends JFrame {
 					case ChatMsg.MODE_TX_STRING:
 						printDisplay(inMsg.userID + ": " + inMsg.message);
 						break;
+					case ChatMsg.MODE_TX_START:
+						System.out.println(inMsg.message);
+						/*
+						 * SwingUtilities.invokeLater(() -> { JLabel startLabel = new
+						 * JLabel(inMsg.message); startLabel.setFont(new Font("휴먼엑스포", Font.BOLD, 18));
+						 * startLabel.setForeground(Color.WHITE); displayPanel.add(startLabel);
+						 * displayPanel.revalidate(); displayPanel.repaint(); });
+						 */
+					case ChatMsg.MODE_TX_FINISH:
+						break;
+					case ChatMsg.MODE_TX_CORRECT: //맞으면 안보이게
+						search(inMsg.message);
+						break;
 					case ChatMsg.MODE_TX_IMAGE:
 						printDisplay(inMsg.userID + ": " + inMsg.message);
 						printDisplay(inMsg.image);
 						break;
+					case ChatMsg.MODE_TX_TEXTFILE:
+						String data = new String(inMsg.fileData);
+						strArr = data.split(" "); //클래스의 멤버변수
+
+						for (int i = 0; i < strArr.length; i++) {
+							/*int index = i;
+							SwingUtilities.invokeLater(() -> {
+								JLabel wordLabel = new JLabel(strArr[index]);
+								wordLabel.setFont(new Font("휴먼엑스포", Font.BOLD, 18));
+								wordLabel.setForeground(Color.BLACK);
+								displayPanel.add(wordLabel);
+								displayPanel.revalidate();
+								displayPanel.repaint();
+							});*/
+							wordLabels = new JLabel[strArr.length]; //클래스의 멤버변수
+							
+							int index = i;
+							SwingUtilities.invokeLater(() -> {
+								wordLabels[index] = new JLabel(strArr[index]);
+								wordLabels[index].setFont(new Font("휴먼엑스포", Font.BOLD, 18));
+								wordLabels[index].setForeground(Color.BLACK);
+								displayPanel.add(wordLabels[index]);
+								displayPanel.revalidate();
+								displayPanel.repaint();
+							});
+						}
+
 					}
 
 				} catch (IOException e) {
@@ -328,8 +378,21 @@ public class TypingGameClient extends JFrame {
 		if (message.isEmpty())
 			return;
 		send(new ChatMsg(uid, ChatMsg.MODE_TX_STRING, message));
-
 		t_input.setText(""); // t_input창 비우기
+	}
+	
+	private void search(String s) {
+		for(int i = 0; i < strArr.length; i++) {
+			if(s.equals(strArr[i])) {
+				int index = i;
+				SwingUtilities.invokeLater(() -> {
+				    displayPanel.remove(wordLabels[index]);
+				    displayPanel.revalidate();
+				    displayPanel.repaint();
+				});
+				break;
+			}
+		}
 	}
 
 	private void sendUserID() {

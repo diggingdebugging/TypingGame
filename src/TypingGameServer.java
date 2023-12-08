@@ -11,6 +11,9 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -30,6 +33,7 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 
 public class TypingGameServer extends JFrame {
 	private int port;
@@ -40,6 +44,7 @@ public class TypingGameServer extends JFrame {
 	private ServerSocket serverSocket;
 	private Thread acceptThread = null;
 	private Vector<ClientHandler> users = new Vector<ClientHandler>();
+	private String [] strArr;
 
 	public TypingGameServer(int port) {
 		buildGUI();
@@ -123,15 +128,17 @@ public class TypingGameServer extends JFrame {
 					ClientHandler cHandler = new ClientHandler(clientSocket);
 					users.add(cHandler);
 					cHandler.start();
-					if(users.size() == 2) {
+					if(users.size() == 2) {						
+						broadcastingMsg(new ChatMsg("", ChatMsg.MODE_TX_START, "게임시작!"));
+						
+						File file = new File("src/example.txt");
+						broadcastingTextFile(file);
+						
 						Timer timer = new Timer();
-						broadcasting(new ChatMsg("", ChatMsg.MODE_TX_STRING, "게임시작!"));
-						
-						
 						TimerTask tt = new TimerTask() {
 							@Override
 							public void run() {
-								broadcasting(new ChatMsg("", ChatMsg.MODE_TX_STRING, "게임종료!"));
+								broadcastingMsg(new ChatMsg("", ChatMsg.MODE_TX_FINISH, "게임종료!"));
 							}
 						};
 						timer.schedule(tt, 60000); //60초동안게임
@@ -154,9 +161,31 @@ public class TypingGameServer extends JFrame {
 
 	}
 	
-	private void broadcasting(ChatMsg msg) {
+	private void broadcastingMsg(ChatMsg msg) {
 		for (ClientHandler c : users) {
 			c.send(msg);
+		}
+	}
+	
+	private void broadcastingTextFile(File file) {
+		for (ClientHandler c : users) {
+			FileInputStream fileInputStream;
+			try {
+				fileInputStream = new FileInputStream(file);
+				byte[] fileData = new byte[(int) file.length()];	
+				fileInputStream.read(fileData);
+				
+				String data = new String(fileData); //파일 데이터 갖고오기
+				strArr = data.split(" ");
+				
+		        ChatMsg msg = new ChatMsg(file.getName(),ChatMsg.MODE_TX_TEXTFILE, fileData);
+		        c.send(msg);
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -194,6 +223,16 @@ public class TypingGameServer extends JFrame {
 			
 		}
 		
+		private void search(String s) { // 검사
+			for(int i = 0; i < strArr.length; i++) {
+				if(s.equals(strArr[i])) {
+					ChatMsg msg = new ChatMsg(uid, ChatMsg.MODE_TX_CORRECT, s);
+					broadcasting(msg);
+					break;
+				}
+			}
+		}
+		
 		private void receiveMessages(Socket cs) {
 			try {
 				ObjectInputStream in = new ObjectInputStream(new BufferedInputStream(clientSocket.getInputStream()));
@@ -213,8 +252,9 @@ public class TypingGameServer extends JFrame {
 						}
 						else if (msg.mode == ChatMsg.MODE_TX_STRING) {
 							message = uid + ": " + msg.message;
+							search(msg.message);
 							printDisplay(message);
-							broadcasting(msg);
+							
 						}
 						else if (msg.mode == ChatMsg.MODE_TX_IMAGE) {
 							printDisplay(uid + ": " + msg.message);
@@ -262,8 +302,7 @@ public class TypingGameServer extends JFrame {
 		}
 
 		@Override
-		public void run() {
-		
+		public void run() {		
 			receiveMessages(clientSocket);
 		}
 	}
