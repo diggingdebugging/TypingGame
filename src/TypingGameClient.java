@@ -64,18 +64,20 @@ public class TypingGameClient extends JFrame {
 	private JTextField t_userID;
 	private JTextField t_hostAddr;
 	private JTextField t_portNum;
-	private String uid;
+	private String uid = "defaultUser";
 	private JPanel displayPanel;
 	private String[] strArr;
 	private JLabel[] wordLabels;
 	private JLabel scoreLabel;
-	private int score;
+	private int score = 0; // 점수
+	private JTextArea textArea;
 
-	public TypingGameClient(String serverAddress, int serverPort) {// 생성
+	public TypingGameClient(String serverAddress, int serverPort, String uid) {// 생성
 		this.serverAddress = serverAddress;
 		this.serverPort = serverPort;
-		setTitle("TypingGameClient");
-		this.score = 0;
+		this.uid = uid;
+
+		setTitle("타자게임");
 		setSize(600, 400);
 		buildGUI();
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -92,7 +94,7 @@ public class TypingGameClient extends JFrame {
 		contentPane.add(createSubPanel()); // 오른쪽에 기능을 담당하는 Panel
 	}
 
-	private JPanel createDisplayPanel() { 
+	private JPanel createDisplayPanel() {
 		displayPanel = new JPanel();
 		displayPanel.setBounds(10, 10, 450, 320);
 		displayPanel.setLayout(new GridLayout(3, 3));
@@ -115,124 +117,98 @@ public class TypingGameClient extends JFrame {
 		});
 
 		inputPanel.add(t_input);
-		t_input.setEditable(false); //게임이 매칭되기전까지는 입력불가능
+		t_input.setEditable(false); // 게임이 매칭되기전까지는 입력불가능
 
 		return inputPanel;
 	}
 
-	private JPanel createSubPanel() { //controlPanel과 InfoPanel의 정보를 담고있음
+	private JPanel createSubPanel() { // controlPanel과 InfoPanel의 정보를 담고있음
 		JPanel subPanel = new JPanel();
 		subPanel.setLayout(new GridLayout(2, 0));
 		subPanel.setBackground(Color.WHITE);
-		subPanel.setBounds(470, 10, 120, 320);	
+		subPanel.setBounds(470, 10, 120, 320);
 		subPanel.add(createControlPanel());
 		subPanel.add(createInfoPanel());
 		return subPanel;
 	}
-	
+
 	private JPanel createControlPanel() {
 		JPanel controlPanel = new JPanel();
-		
+
 		// 점수 Label
 		JLabel label = new JLabel("점수 : ");
 		controlPanel.add(label);
-		
+
 		scoreLabel = new JLabel(Integer.toString(score));
 		controlPanel.add(scoreLabel);
 
-		
 		// 접속 button
-				b_connect = new JButton("게임매칭");
-				b_connect.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-					//	TypingGameClient.this.serverAddress = t_hostAddr.getText();
-						//TypingGameClient.this.serverPort = Integer.parseInt(t_portNum.getText());
+		b_connect = new JButton("게임매칭");
+		b_connect.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				// TypingGameClient.this.serverAddress = t_hostAddr.getText();
+				// TypingGameClient.this.serverPort = Integer.parseInt(t_portNum.getText());
+				try {
+					connectToServer();
+					sendUserID();
+				} catch (UnknownHostException e1) {
+					/// printDisplay("서버 주소와 포트번호를 확인하세요: " + e1.getMessage());
+					return;
+				} catch (IOException e1) {
+					// printDisplay("서버와의 연결 오류: " + e1.getMessage());
+					return;
+				} // 버튼을 클릭하면 connectToServer()
 
-						try {
-							connectToServer();
-							sendUserID();
-						} catch (UnknownHostException e1) {
-							///printDisplay("서버 주소와 포트번호를 확인하세요: " + e1.getMessage());
-							return;
-						} catch (IOException e1) {
-							//printDisplay("서버와의 연결 오류: " + e1.getMessage());
-							return;
-						} // 버튼을 클릭하면 connectToServer()
+				t_input.setEditable(true);
 
-						t_input.setEditable(true);
+				b_connect.setEnabled(false);
+				b_disconnect.setEnabled(true);
+				b_exit.setEnabled(false);
+			}
+		});
+		controlPanel.add(b_connect);
 
-						b_connect.setEnabled(false);
-						b_disconnect.setEnabled(true);
-						b_exit.setEnabled(false);
+		// 접속끊기 button
+		b_disconnect = new JButton("접속끊기");
+		b_disconnect.setEnabled(false);
+		b_disconnect.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				disconnect(); // 버튼을 클릭하면 disconnect()
+				t_input.setEditable(false);// 입력창 비활성화
+				b_send.setEnabled(false);// 보내기버튼 끄기
+				b_select.setEnabled(false);
 
-						t_userID.setEditable(false);
-						t_hostAddr.setEditable(false);
-						t_portNum.setEditable(false);
-					}
-				});
-				controlPanel.add(b_connect);
-
-				// 접속끊기 button
-				b_disconnect = new JButton("접속끊기");
+				b_connect.setEnabled(true);// 접속하기 버튼 켜기
 				b_disconnect.setEnabled(false);
-				b_disconnect.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-						disconnect(); // 버튼을 클릭하면 disconnect()
-						t_input.setEditable(false);// 입력창 비활성화
-						b_send.setEnabled(false);// 보내기버튼 끄기
-						b_select.setEnabled(false);
+				b_exit.setEnabled(true);
 
-						b_connect.setEnabled(true);// 접속하기 버튼 켜기
-						b_disconnect.setEnabled(false);
-						b_exit.setEnabled(true);
+				t_userID.setEditable(true);
+				t_hostAddr.setEditable(true);
+				t_portNum.setEditable(true);
+			}
+		});
+		controlPanel.add(b_disconnect);
 
-						t_userID.setEditable(true);
-						t_hostAddr.setEditable(true);
-						t_portNum.setEditable(true);
-					}
-				});
-				controlPanel.add(b_disconnect);
+		// 종료하기 button
+		b_exit = new JButton("종료하기");
+		b_exit.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				System.exit(0); // 버튼을 클릭하면 프로그램종료
+			}
+		});
 
-				// 종료하기 button
-				b_exit = new JButton("종료하기");
-				b_exit.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-						System.exit(0); // 버튼을 클릭하면 프로그램종료
-					}
-				});
+		controlPanel.add(b_exit);
 
-				controlPanel.add(b_exit);
-		
 		return controlPanel;
 	}
 
 	private JPanel createInfoPanel() {
 		JPanel infoPanel = new JPanel();
-		infoPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
-
-		t_userID = new JTextField(7);
-		t_hostAddr = new JTextField(12);
-		t_portNum = new JTextField(5);
-
-		JLabel label1 = new JLabel("아이디: ");
-		JLabel label2 = new JLabel("서버주소: ");
-		JLabel label3 = new JLabel("포트번호: ");
-
-		t_userID.setText("guest" + getLocalAddr().split("\\.")[3]);
-		t_hostAddr.setText(serverAddress);
-		t_portNum.setText(String.valueOf(serverPort));
-		t_portNum.setHorizontalAlignment(JTextField.CENTER);
-
-		infoPanel.add(label1);
-		infoPanel.add(t_userID);
-		infoPanel.add(label2);
-		infoPanel.add(t_hostAddr);
-		infoPanel.add(label3);
-		infoPanel.add(t_portNum);
-
+		textArea = new JTextArea(7, 10);
+		infoPanel.add(textArea);
 		return infoPanel;
 	}
-	
+
 	private void connectToServer() throws UnknownHostException, IOException { // connetToServer에서 예외를 직접처리하지 않고 메소드를 호출한
 																				// 호출측으로 전
 		socket = new Socket(); // 빈 소켓 객체 생성
@@ -247,25 +223,34 @@ public class TypingGameClient extends JFrame {
 					ChatMsg inMsg = (ChatMsg) in.readObject();
 					if (inMsg == null) {
 						disconnect();
-						//printDisplay("서버 연결 끊김");
+						// printDisplay("서버 연결 끊김");
 						return;
 					}
 
 					switch (inMsg.mode) {
-					case ChatMsg.MODE_TX_START: //시작 메세지
-						System.out.println(inMsg.message);
+					case ChatMsg.MODE_TX_START: // 시작 메세지						
+						textArea.append(inMsg.message + "\n");
+						break;
 						/*
 						 * SwingUtilities.invokeLater(() -> { JLabel startLabel = new
 						 * JLabel(inMsg.message); startLabel.setFont(new Font("휴먼엑스포", Font.BOLD, 18));
 						 * startLabel.setForeground(Color.WHITE); displayPanel.add(startLabel);
 						 * displayPanel.revalidate(); displayPanel.repaint(); });
 						 */
-					case ChatMsg.MODE_TX_FINISH://종료 메세지
+					case ChatMsg.MODE_TX_FINISH:// 종료 메세지						
+						textArea.append(inMsg.message + "\n");	
+						t_input.setEditable(false);
+						b_disconnect.setEnabled(false);
+						b_exit.setEnabled(true);
+						//sendScore();
 						break;
-					case ChatMsg.MODE_TX_CORRECT://정답 메세지
+					case ChatMsg.MODE_TX_WINNER:
+						textArea.append(inMsg.message + "\n");
+						break;
+					case ChatMsg.MODE_TX_CORRECT:// 정답 메세지
 						search(inMsg);
 						break;
-					case ChatMsg.MODE_TX_TEXTFILE://단어 파일 
+					case ChatMsg.MODE_TX_TEXTFILE:// 단어 파일
 						String data = new String(inMsg.fileData);
 						strArr = data.split(" "); // 클래스의 멤버변수
 						for (int i = 0; i < strArr.length; i++) {
@@ -285,7 +270,7 @@ public class TypingGameClient extends JFrame {
 				} catch (IOException e) {
 					System.err.println("클라이언트 일반 수신 오류> " + e.getMessage());
 				} catch (ClassNotFoundException e) {
-					//printDisplay("잘못된 객체가 전달되었습니다.");
+					// printDisplay("잘못된 객체가 전달되었습니다.");
 				}
 			}
 
@@ -294,7 +279,7 @@ public class TypingGameClient extends JFrame {
 				try {
 					in = new ObjectInputStream(new BufferedInputStream(socket.getInputStream()));
 				} catch (IOException e) {
-					//printDisplay("입력 스트림이 열리지 않음");
+					// printDisplay("입력 스트림이 열리지 않음");
 				}
 				while (receiveThread == Thread.currentThread()) {
 					receiveMessage();
@@ -328,31 +313,38 @@ public class TypingGameClient extends JFrame {
 		String message = t_input.getText();
 		if (message.isEmpty())
 			return;
-		send(new ChatMsg(uid, ChatMsg.MODE_TX_STRING, message));
+		send(new ChatMsg(uid, ChatMsg.MODE_TX_WORD, message));
 		t_input.setText(""); // t_input창 비우기
+	}
+	
+	private void sendScore() { // 점수 서버로 보내기
+		String message = Integer.toString(score);
+		if (message.isEmpty())
+			return;
+		send(new ChatMsg(uid, ChatMsg.MODE_TX_SCORE, message));
 	}
 
 	private void search(ChatMsg inMsg) {
-		String s = inMsg.message; 
+		String s = inMsg.message;
 		for (int i = 0; i < strArr.length; i++) {
 			if (s.equals(strArr[i])) {
 				int index = i;
 				SwingUtilities.invokeLater(() -> {
 					displayPanel.remove(wordLabels[index]);
 					displayPanel.revalidate();
-					displayPanel.repaint();				
+					displayPanel.repaint();
 				});
-				
-				if(uid.equals(inMsg.userID))
-				score ++;
-				scoreLabel.setText(Integer.toString(score));	
+
+				if (uid.equals(inMsg.userID)) {
+					score++;
+					scoreLabel.setText(Integer.toString(score));
+				}
 				break;
 			}
 		}
 	}
 
 	private void sendUserID() {
-		uid = t_userID.getText();
 		send(new ChatMsg(uid, ChatMsg.MODE_LOGIN));
 	}
 
@@ -369,9 +361,10 @@ public class TypingGameClient extends JFrame {
 		return addr;
 	}
 
-	public static void main(String[] args) {
+	/*public static void main(String[] args) {
 		String serverAddress = "localhost";
 		int serverPort = 54321;
-		new TypingGameClient(serverAddress, serverPort);
-	}
+		String uid = "defaultUser";
+		new TypingGameClient(serverAddress, serverPort, uid);
+	}*/
 }

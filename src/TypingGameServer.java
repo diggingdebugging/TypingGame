@@ -23,6 +23,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.Vector;
@@ -43,7 +44,11 @@ public class TypingGameServer extends JFrame {
 	private ServerSocket serverSocket;
 	private Thread acceptThread = null;
 	private Vector<ClientHandler> users = new Vector<ClientHandler>();
+	private HashMap<String, Integer> scoreMap = new HashMap<String, Integer>();
+	private Vector<String> words = new Vector<String>(); 
 	private String [] strArr;
+	private Vector<String> uids = new Vector<String>();
+	private String winner;
 
 	public TypingGameServer(int port) {
 		buildGUI();
@@ -130,17 +135,18 @@ public class TypingGameServer extends JFrame {
 					if(users.size() == 2) {						
 						broadcastingMsg(new ChatMsg("", ChatMsg.MODE_TX_START, "게임시작!"));
 						
-						File file = new File("src/example.txt");
-						broadcastingTextFile(file);
+						File file = new File("src/example.txt"); 
+						broadcastingTextFile(file); 
 						
 						Timer timer = new Timer();
 						TimerTask tt = new TimerTask() {
 							@Override
 							public void run() {
 								broadcastingMsg(new ChatMsg("", ChatMsg.MODE_TX_FINISH, "게임종료!"));
+								//compare();
 							}
 						};
-						timer.schedule(tt, 30000); //60초동안게임
+						timer.schedule(tt, 60000); //60초동안게임
 						
 					}
 				} catch(SocketException e){
@@ -150,23 +156,20 @@ public class TypingGameServer extends JFrame {
 					printDisplay("입출력오류!");
 					System.exit(-1);
 				}
-			}
-			
-			
+			}						
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
 	}
 	
-	private void broadcastingMsg(ChatMsg msg) {
+	private void broadcastingMsg(ChatMsg msg) { // 접속한 클라이언트들에게 메세징
 		for (ClientHandler c : users) {
 			c.send(msg);
 		}
 	}
 	
-	private void broadcastingTextFile(File file) {
+	private void broadcastingTextFile(File file) { //클라이언트들에게 파일데이터 보내기
 		for (ClientHandler c : users) {
 			FileInputStream fileInputStream;
 			try {
@@ -175,7 +178,12 @@ public class TypingGameServer extends JFrame {
 				fileInputStream.read(fileData);
 				
 				String data = new String(fileData); //파일 데이터 갖고오기
+
 				strArr = data.split(" ");
+				
+				for(int i=0; i<strArr.length; i++) {//words 벡터 초기화
+					words.add(strArr[i]);
+				}
 				
 		        ChatMsg msg = new ChatMsg(file.getName(),ChatMsg.MODE_TX_TEXTFILE, fileData);
 		        c.send(msg);
@@ -187,7 +195,24 @@ public class TypingGameServer extends JFrame {
 			}
 		}
 	}
-
+	
+	/*private void compare(){
+		ChatMsg msg;
+		int clientScore1 = scoreMap.get(uids.get(0));
+		int clientScore2 = scoreMap.get(uids.get(1));
+		String winnerMessage1 = uids.get(0) + "님이 승리하였습니다";
+		String winnerMessage2 = uids.get(1) + "님이 승리하였습니다";
+		String winnerMessage3 = "비겼습니다";
+		if(clientScore1 > clientScore2)
+			msg = new ChatMsg(ChatMsg.MODE_TX_WINNER, winnerMessage1);
+		else if(clientScore1 == clientScore2) 
+			msg = new ChatMsg(ChatMsg.MODE_TX_WINNER, winnerMessage3);		
+		else
+			msg = new ChatMsg(ChatMsg.MODE_TX_WINNER, winnerMessage2);
+		
+		broadcastingMsg(msg);
+	}*/
+	
 	private void printDisplay(String s) {
 		t_display.append(s + "\n");
 		t_display.setCaretPosition(t_display.getDocument().getLength());
@@ -200,10 +225,6 @@ public class TypingGameServer extends JFrame {
 		} catch (IOException e1) {
 			System.err.println("서버 종료 오류> " + e1.getMessage());
 		}
-	}
-	
-	private class SendMsg extends Thread{
-		
 	}
 
 	private class ClientHandler extends Thread {
@@ -222,10 +243,11 @@ public class TypingGameServer extends JFrame {
 			
 		}
 		
-		private void search(String s) { // 검사
-			for(int i = 0; i < strArr.length; i++) {
-				if(s.equals(strArr[i])) {
-					ChatMsg msg = new ChatMsg(uid, ChatMsg.MODE_TX_CORRECT, s);
+		private void search(String s) { // 클라이언트에서 보내온 단어검사
+			for(int i = 0; i < words.size(); i++) {
+				if(s.equals(words.get(i))) {
+					words.remove(i); //맞춘 단어는 벡터에서 제거
+					ChatMsg msg = new ChatMsg(uid, ChatMsg.MODE_TX_CORRECT, s); //정답 메세지 보내기
 					broadcasting(msg);
 					break;
 				}
@@ -242,6 +264,7 @@ public class TypingGameServer extends JFrame {
 					while ((msg = (ChatMsg)in.readObject()) != null) {
 						if(msg.mode == ChatMsg.MODE_LOGIN) {
 							uid = msg.userID;
+							uids.add(uid);
 							printDisplay("새 참가자:" + uid);
 							printDisplay("현재 참가자 수 : " + users.size());
 							continue;
@@ -249,10 +272,14 @@ public class TypingGameServer extends JFrame {
 						else if (msg.mode == ChatMsg.MODE_LOGOUT) {
 							break;
 						}
-						else if (msg.mode == ChatMsg.MODE_TX_STRING) {
+						else if (msg.mode == ChatMsg.MODE_TX_WORD) { //단어를 받음
 							message = uid + ": " + msg.message;
 							search(msg.message);
 							printDisplay(message);
+						}
+						else if (msg.mode == ChatMsg.MODE_TX_SCORE) {
+							scoreMap.put(msg.userID, msg.score);
+							//printDisplay((scoreMap.get(0).toString()));
 						}
 					}
 				} catch (ClassNotFoundException e) {
@@ -276,7 +303,7 @@ public class TypingGameServer extends JFrame {
 		}
 		
 		private void sendMessage(String msg) {		
-			send(new ChatMsg(uid, ChatMsg.MODE_TX_STRING, msg));	
+			send(new ChatMsg(uid, ChatMsg.MODE_TX_WORD, msg));	
 		}
 		
 		public void broadcasting(ChatMsg msg) {
