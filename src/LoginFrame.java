@@ -34,7 +34,7 @@ public class LoginFrame extends JFrame {
 
    public void buildGUI() {
       Container contentPane = getContentPane();
-      contentPane.setLayout(new BorderLayout());
+      contentPane.setLayout(null);
       
       
       JPanel subPanel = new JPanel();

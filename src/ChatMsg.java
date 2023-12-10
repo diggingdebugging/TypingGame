@@ -10,7 +10,6 @@ public class ChatMsg implements Serializable {
 	public final static int MODE_TX_START  = 0x11;
 	public final static int MODE_TX_FINISH  = 0x12;
 	public final static int MODE_TX_FILE  = 0x20;
-	public final static int MODE_TX_IMAGE = 0x40;
 	public final static int MODE_TX_TEXTFILE = 0x50;
 	public final static int MODE_TX_CORRECT = 0x60;
 	

@@ -140,7 +140,7 @@ public class TypingGameServer extends JFrame {
 								broadcastingMsg(new ChatMsg("", ChatMsg.MODE_TX_FINISH, "게임종료!"));
 							}
 						};
-						timer.schedule(tt, 60000); //60초동안게임
+						timer.schedule(tt, 30000); //60초동안게임
 						
 					}
 				} catch(SocketException e){
@@ -253,11 +253,6 @@ public class TypingGameServer extends JFrame {
 							message = uid + ": " + msg.message;
 							search(msg.message);
 							printDisplay(message);
-							
-						}
-						else if (msg.mode == ChatMsg.MODE_TX_IMAGE) {
-							printDisplay(uid + ": " + msg.message);
-							broadcasting(msg);
 						}
 					}
 				} catch (ClassNotFoundException e) {
