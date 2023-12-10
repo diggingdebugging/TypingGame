@@ -1,4 +1,3 @@
-
 //1871139 신유진
 import java.awt.BorderLayout;
 import java.awt.Container;

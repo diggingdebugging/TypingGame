@@ -1,4 +1,3 @@
-
 //1871139 신유진
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -75,16 +74,17 @@ public class TypingGameClient extends JFrame {
 		this.serverAddress = serverAddress;
 		this.serverPort = serverPort;
 		setTitle("TypingGameClient");
-		setSize(500, 300);
+		setSize(600, 400);
 		buildGUI();
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setVisible(true);
+		setResizable(false); //크기 변경 불가
+		setVisible(true); 	
 	}
 
 	private void buildGUI() {// contentPane에 3가지의 Panel을 부착한다.
 		Container contentPane = getContentPane();
 		contentPane.setLayout(new BorderLayout());
-
+		
 		JPanel subPanel = new JPanel(); // 서브패널
 		subPanel.setLayout(new GridLayout(3, 0));
 		subPanel.add(createInputPanel());
@@ -92,6 +92,7 @@ public class TypingGameClient extends JFrame {
 		subPanel.add(createControlPanel());
 
 		contentPane.add(createDisplayPanel(), BorderLayout.CENTER);
+		contentPane.add(createScorePanel(), BorderLayout.EAST);
 		contentPane.add(subPanel, BorderLayout.SOUTH);
 	}
 
@@ -105,7 +106,6 @@ public class TypingGameClient extends JFrame {
 		// t_display = new JTextPane(document);
 		// t_display.setEditable(false);
 		// displayPanel.add(new JScrollPane(t_display), BorderLayout.CENTER);
-
 		return displayPanel;
 	}
 
@@ -164,6 +164,14 @@ public class TypingGameClient extends JFrame {
 
 		return inputPanel;
 	}
+	
+	private JPanel createScorePanel() {
+		JPanel scorePanel = new JPanel();
+		scorePanel.setLayout(new BorderLayout());
+		JLabel scoreLabel = new JLabel("점수");
+		scorePanel.add(scoreLabel, BorderLayout.NORTH);
+		return scorePanel;
+	}
 
 	private JPanel createControlPanel() {
 		JPanel controlPanel = new JPanel();
@@ -186,6 +194,7 @@ public class TypingGameClient extends JFrame {
 					printDisplay("서버와의 연결 오류: " + e1.getMessage());
 					return;
 				} // 버튼을 클릭하면 connectToServer()
+				// JFrame f = new JFrame(); 
 
 				t_input.setEditable(true);
 				b_send.setEnabled(true);
@@ -243,7 +252,7 @@ public class TypingGameClient extends JFrame {
 		t_hostAddr = new JTextField(12);
 		t_portNum = new JTextField(5);
 
-		JLabel label1 = new JLabel("아이디: ");
+		JLabel label1 = new JLabel("아이	디: ");
 		JLabel label2 = new JLabel("서버주소: ");
 		JLabel label3 = new JLabel("포트번호: ");
 
