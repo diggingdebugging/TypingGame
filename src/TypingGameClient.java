@@ -1,69 +1,41 @@
 
 //1871139 신유진
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Container;
-import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.GridLayout;
-import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Reader;
-import java.io.Writer;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.UnknownHostException;
-import java.util.Scanner;
 
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.DefaultStyledDocument;
 
 public class TypingGameClient extends JFrame {
 	private Thread receiveThread = null;
 	private JTextField t_input;
 	private JButton b_connect;
 	private JButton b_disconnect;
-	private JButton b_send;
-	private JButton b_select;
 	private JButton b_exit;
 	private String serverAddress;
 	private int serverPort;
 	private Socket socket;
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
-	private JTextField t_userID;
-	private JTextField t_hostAddr;
-	private JTextField t_portNum;
 	private String uid = "defaultUser";
 	private JPanel displayPanel;
 	private String[] strArr;
@@ -81,6 +53,7 @@ public class TypingGameClient extends JFrame {
 		setSize(600, 400);
 		buildGUI();
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		setLocationRelativeTo(null);
 		setResizable(false); // 크기 변경 불가
 		setVisible(true);
 	}
@@ -97,7 +70,7 @@ public class TypingGameClient extends JFrame {
 	private JPanel createDisplayPanel() {
 		displayPanel = new JPanel();
 		displayPanel.setBounds(10, 10, 450, 320);
-		displayPanel.setLayout(new GridLayout(3, 3));
+		displayPanel.setLayout(new GridLayout(4, 4));
 		displayPanel.setBackground(Color.WHITE);
 
 		return displayPanel;
@@ -127,35 +100,35 @@ public class TypingGameClient extends JFrame {
 		subPanel.setLayout(new GridLayout(2, 0));
 		subPanel.setBackground(Color.WHITE);
 		subPanel.setBounds(470, 10, 120, 320);
+		// subPanel.add(createLabelPanel());
 		subPanel.add(createControlPanel());
 		subPanel.add(createInfoPanel());
 		return subPanel;
 	}
 
 	private JPanel createControlPanel() {
-		JPanel controlPanel = new JPanel();
+		JPanel controlPanel = new JPanel(new GridLayout(5, 0));
 
-		// 점수 Label
-		JLabel label = new JLabel("점수 : ");
+		JLabel label = new JLabel("점수");
 		controlPanel.add(label);
 
 		scoreLabel = new JLabel(Integer.toString(score));
 		controlPanel.add(scoreLabel);
 
+		JLabel userIdLabel = new JLabel("<html><br> id : " + uid + "</html>");
+		controlPanel.add(userIdLabel);
+
 		// 접속 button
 		b_connect = new JButton("게임매칭");
 		b_connect.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				// TypingGameClient.this.serverAddress = t_hostAddr.getText();
-				// TypingGameClient.this.serverPort = Integer.parseInt(t_portNum.getText());
 				try {
 					connectToServer();
 					sendUserID();
 				} catch (UnknownHostException e1) {
-					/// printDisplay("서버 주소와 포트번호를 확인하세요: " + e1.getMessage());
 					return;
 				} catch (IOException e1) {
-					// printDisplay("서버와의 연결 오류: " + e1.getMessage());
+					
 					return;
 				} // 버튼을 클릭하면 connectToServer()
 
@@ -167,27 +140,6 @@ public class TypingGameClient extends JFrame {
 			}
 		});
 		controlPanel.add(b_connect);
-
-		// 접속끊기 button
-		b_disconnect = new JButton("접속끊기");
-		b_disconnect.setEnabled(false);
-		b_disconnect.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				disconnect(); // 버튼을 클릭하면 disconnect()
-				t_input.setEditable(false);// 입력창 비활성화
-				b_send.setEnabled(false);// 보내기버튼 끄기
-				b_select.setEnabled(false);
-
-				b_connect.setEnabled(true);// 접속하기 버튼 켜기
-				b_disconnect.setEnabled(false);
-				b_exit.setEnabled(true);
-
-				t_userID.setEditable(true);
-				t_hostAddr.setEditable(true);
-				t_portNum.setEditable(true);
-			}
-		});
-		controlPanel.add(b_disconnect);
 
 		// 종료하기 button
 		b_exit = new JButton("종료하기");
@@ -209,8 +161,7 @@ public class TypingGameClient extends JFrame {
 		return infoPanel;
 	}
 
-	private void connectToServer() throws UnknownHostException, IOException { // connetToServer에서 예외를 직접처리하지 않고 메소드를 호출한
-																				// 호출측으로 전
+	private void connectToServer() throws UnknownHostException, IOException { // connetToServer에서 예외를 직접처리하지 않고 메소드를 호출한다															
 		socket = new Socket(); // 빈 소켓 객체 생성
 		SocketAddress sa = new InetSocketAddress(serverAddress, serverPort);
 		socket.connect(sa, 3000); // 3000ms, 이 서버에 3초안에 연결을 요청, 3초가 넘어가면 타임아웃! 연결 시도를 중단
@@ -228,21 +179,15 @@ public class TypingGameClient extends JFrame {
 					}
 
 					switch (inMsg.mode) {
-					case ChatMsg.MODE_TX_START: // 시작 메세지						
+					case ChatMsg.MODE_TX_START: // 시작 메세지
 						textArea.append(inMsg.message + "\n");
 						break;
-						/*
-						 * SwingUtilities.invokeLater(() -> { JLabel startLabel = new
-						 * JLabel(inMsg.message); startLabel.setFont(new Font("휴먼엑스포", Font.BOLD, 18));
-						 * startLabel.setForeground(Color.WHITE); displayPanel.add(startLabel);
-						 * displayPanel.revalidate(); displayPanel.repaint(); });
-						 */
-					case ChatMsg.MODE_TX_FINISH:// 종료 메세지						
-						textArea.append(inMsg.message + "\n");	
+					case ChatMsg.MODE_TX_FINISH:// 종료 메세지
+						textArea.append(inMsg.message + "\n");
 						t_input.setEditable(false);
 						b_disconnect.setEnabled(false);
 						b_exit.setEnabled(true);
-						//sendScore();
+						sendScore();
 						break;
 					case ChatMsg.MODE_TX_WINNER:
 						textArea.append(inMsg.message + "\n");
@@ -270,7 +215,7 @@ public class TypingGameClient extends JFrame {
 				} catch (IOException e) {
 					System.err.println("클라이언트 일반 수신 오류> " + e.getMessage());
 				} catch (ClassNotFoundException e) {
-					// printDisplay("잘못된 객체가 전달되었습니다.");
+					
 				}
 			}
 
@@ -279,7 +224,7 @@ public class TypingGameClient extends JFrame {
 				try {
 					in = new ObjectInputStream(new BufferedInputStream(socket.getInputStream()));
 				} catch (IOException e) {
-					// printDisplay("입력 스트림이 열리지 않음");
+					
 				}
 				while (receiveThread == Thread.currentThread()) {
 					receiveMessage();
@@ -316,12 +261,9 @@ public class TypingGameClient extends JFrame {
 		send(new ChatMsg(uid, ChatMsg.MODE_TX_WORD, message));
 		t_input.setText(""); // t_input창 비우기
 	}
-	
+
 	private void sendScore() { // 점수 서버로 보내기
-		String message = Integer.toString(score);
-		if (message.isEmpty())
-			return;
-		send(new ChatMsg(uid, ChatMsg.MODE_TX_SCORE, message));
+		send(new ChatMsg(uid, ChatMsg.MODE_TX_SCORE, score));
 	}
 
 	private void search(ChatMsg inMsg) {
@@ -347,24 +289,4 @@ public class TypingGameClient extends JFrame {
 	private void sendUserID() {
 		send(new ChatMsg(uid, ChatMsg.MODE_LOGIN));
 	}
-
-	private String getLocalAddr() {
-		InetAddress local = null;
-		String addr = "";
-		try {
-			local = InetAddress.getLocalHost();
-			addr = local.getHostAddress();
-			System.out.println(addr);
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-		}
-		return addr;
-	}
-
-	/*public static void main(String[] args) {
-		String serverAddress = "localhost";
-		int serverPort = 54321;
-		String uid = "defaultUser";
-		new TypingGameClient(serverAddress, serverPort, uid);
-	}*/
 }

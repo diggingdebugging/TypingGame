@@ -1,3 +1,4 @@
+
 //1871139 신유진
 import java.awt.BorderLayout;
 import java.awt.Container;
@@ -45,14 +46,13 @@ public class TypingGameServer extends JFrame {
 	private Thread acceptThread = null;
 	private Vector<ClientHandler> users = new Vector<ClientHandler>();
 	private HashMap<String, Integer> scoreMap = new HashMap<String, Integer>();
-	private Vector<String> words = new Vector<String>(); 
-	private String [] strArr;
+	private Vector<String> words = new Vector<String>();
+	private String[] strArr;
 	private Vector<String> uids = new Vector<String>();
-	private String winner;
 
 	public TypingGameServer(int port) {
 		buildGUI();
-		setTitle("TypingGameServer");
+		setTitle("Server");
 		setSize(400, 300);
 		this.port = port;
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -76,7 +76,7 @@ public class TypingGameServer extends JFrame {
 
 	private JPanel createControlPanel() {
 		JPanel controlPanel = new JPanel();
-		controlPanel.setLayout(new GridLayout(1, 3, -10, -10));
+		controlPanel.setLayout(new GridLayout(1, 3));
 		button1 = new JButton("서버시작");
 		button2 = new JButton("서버종료");
 		button3 = new JButton("종료");
@@ -89,7 +89,7 @@ public class TypingGameServer extends JFrame {
 					@Override
 					public void run() {
 						startServer();
-					}	
+					}
 				});
 				acceptThread.start();
 				button1.setEnabled(false);
@@ -132,61 +132,68 @@ public class TypingGameServer extends JFrame {
 					ClientHandler cHandler = new ClientHandler(clientSocket);
 					users.add(cHandler);
 					cHandler.start();
-					if(users.size() == 2) {						
+					if (users.size() == 2) {
 						broadcastingMsg(new ChatMsg("", ChatMsg.MODE_TX_START, "게임시작!"));
-						
-						File file = new File("src/example.txt"); 
-						broadcastingTextFile(file); 
-						
-						Timer timer = new Timer();
-						TimerTask tt = new TimerTask() {
+
+						// File file = new File("src/example.txt");
+						File file = new File("/Users/yujin/networkprogramming/project/example.txt");
+						broadcastingTextFile(file);
+
+						Timer gameTimer = new Timer();
+						TimerTask gameTimerTask = new TimerTask() {
 							@Override
 							public void run() {
 								broadcastingMsg(new ChatMsg("", ChatMsg.MODE_TX_FINISH, "게임종료!"));
-								//compare();
+								Timer resultTimer = new Timer();
+								TimerTask resultTimerTask = new TimerTask() {
+									@Override
+									public void run() {
+										compare();
+									}
+								};
+								resultTimer.schedule(resultTimerTask, 2000);
 							}
 						};
-						timer.schedule(tt, 60000); //60초동안게임
-						
+						gameTimer.schedule(gameTimerTask, 60000); // 초동안게임
+
 					}
-				} catch(SocketException e){
+				} catch (SocketException e) {
 					printDisplay("서버 소켓 종료!");
-				}
-				catch (IOException e) {
+				} catch (IOException e) {
 					printDisplay("입출력오류!");
 					System.exit(-1);
 				}
-			}						
+			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
-	
+
 	private void broadcastingMsg(ChatMsg msg) { // 접속한 클라이언트들에게 메세징
 		for (ClientHandler c : users) {
 			c.send(msg);
 		}
 	}
-	
-	private void broadcastingTextFile(File file) { //클라이언트들에게 파일데이터 보내기
+
+	private void broadcastingTextFile(File file) { // 클라이언트들에게 파일데이터 보내기
 		for (ClientHandler c : users) {
 			FileInputStream fileInputStream;
 			try {
 				fileInputStream = new FileInputStream(file);
-				byte[] fileData = new byte[(int) file.length()];	
+				byte[] fileData = new byte[(int) file.length()];
 				fileInputStream.read(fileData);
-				
-				String data = new String(fileData); //파일 데이터 갖고오기
+
+				String data = new String(fileData); // 파일 데이터 갖고오기
 
 				strArr = data.split(" ");
-				
-				for(int i=0; i<strArr.length; i++) {//words 벡터 초기화
+
+				for (int i = 0; i < strArr.length; i++) {// words 벡터 초기화
 					words.add(strArr[i]);
 				}
-				
-		        ChatMsg msg = new ChatMsg(file.getName(),ChatMsg.MODE_TX_TEXTFILE, fileData);
-		        c.send(msg);
+
+				ChatMsg msg = new ChatMsg(file.getName(), ChatMsg.MODE_TX_TEXTFILE, fileData);
+				c.send(msg);
 			} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -195,29 +202,32 @@ public class TypingGameServer extends JFrame {
 			}
 		}
 	}
-	
-	/*private void compare(){
+
+	private void compare() {
+		printDisplay(uids.get(0));
 		ChatMsg msg;
 		int clientScore1 = scoreMap.get(uids.get(0));
 		int clientScore2 = scoreMap.get(uids.get(1));
-		String winnerMessage1 = uids.get(0) + "님이 승리하였습니다";
-		String winnerMessage2 = uids.get(1) + "님이 승리하였습니다";
-		String winnerMessage3 = "비겼습니다";
-		if(clientScore1 > clientScore2)
+
+		String winnerMessage1 = uids.get(0) + "승리!";
+		String winnerMessage2 = uids.get(1) + "승리!";
+		String winnerMessage3 = "무승부!";
+
+		if (clientScore1 > clientScore2)
 			msg = new ChatMsg(ChatMsg.MODE_TX_WINNER, winnerMessage1);
-		else if(clientScore1 == clientScore2) 
-			msg = new ChatMsg(ChatMsg.MODE_TX_WINNER, winnerMessage3);		
+		else if (clientScore1 == clientScore2)
+			msg = new ChatMsg(ChatMsg.MODE_TX_WINNER, winnerMessage3);
 		else
 			msg = new ChatMsg(ChatMsg.MODE_TX_WINNER, winnerMessage2);
-		
+
 		broadcastingMsg(msg);
-	}*/
-	
+	}
+
 	private void printDisplay(String s) {
 		t_display.append(s + "\n");
 		t_display.setCaretPosition(t_display.getDocument().getLength());
 	}
-	
+
 	private void disconnect() {
 		try {
 			acceptThread = null;
@@ -231,7 +241,7 @@ public class TypingGameServer extends JFrame {
 		private Socket clientSocket;
 		private ObjectOutputStream out;
 		private String uid;
-		
+
 		public ClientHandler(Socket clientSocket) {
 			this.clientSocket = clientSocket;
 			try {
@@ -240,46 +250,43 @@ public class TypingGameServer extends JFrame {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			
+
 		}
-		
+
 		private void search(String s) { // 클라이언트에서 보내온 단어검사
-			for(int i = 0; i < words.size(); i++) {
-				if(s.equals(words.get(i))) {
-					words.remove(i); //맞춘 단어는 벡터에서 제거
-					ChatMsg msg = new ChatMsg(uid, ChatMsg.MODE_TX_CORRECT, s); //정답 메세지 보내기
+			for (int i = 0; i < words.size(); i++) {
+				if (s.equals(words.get(i))) {
+					words.remove(i); // 맞춘 단어는 벡터에서 제거
+					ChatMsg msg = new ChatMsg(uid, ChatMsg.MODE_TX_CORRECT, s); // 정답 메세지 보내기
 					broadcasting(msg);
 					break;
 				}
 			}
 		}
-		
+
 		private void receiveMessages(Socket cs) {
 			try {
 				ObjectInputStream in = new ObjectInputStream(new BufferedInputStream(clientSocket.getInputStream()));
-				
-				String message; 
+
+				String message;
 				ChatMsg msg;
 				try {
-					while ((msg = (ChatMsg)in.readObject()) != null) {
-						if(msg.mode == ChatMsg.MODE_LOGIN) {
+					while ((msg = (ChatMsg) in.readObject()) != null) {
+						if (msg.mode == ChatMsg.MODE_LOGIN) {
 							uid = msg.userID;
 							uids.add(uid);
 							printDisplay("새 참가자:" + uid);
 							printDisplay("현재 참가자 수 : " + users.size());
 							continue;
-						}
-						else if (msg.mode == ChatMsg.MODE_LOGOUT) {
+						} else if (msg.mode == ChatMsg.MODE_LOGOUT) {
 							break;
-						}
-						else if (msg.mode == ChatMsg.MODE_TX_WORD) { //단어를 받음
+						} else if (msg.mode == ChatMsg.MODE_TX_WORD) { // 단어를 받음
 							message = uid + ": " + msg.message;
 							search(msg.message);
 							printDisplay(message);
-						}
-						else if (msg.mode == ChatMsg.MODE_TX_SCORE) {
+						} else if (msg.mode == ChatMsg.MODE_TX_SCORE) {
 							scoreMap.put(msg.userID, msg.score);
-							//printDisplay((scoreMap.get(0).toString()));
+							uids.add(msg.userID);
 						}
 					}
 				} catch (ClassNotFoundException e) {
@@ -301,17 +308,17 @@ public class TypingGameServer extends JFrame {
 			}
 
 		}
-		
-		private void sendMessage(String msg) {		
-			send(new ChatMsg(uid, ChatMsg.MODE_TX_WORD, msg));	
+
+		private void sendMessage(String msg) {
+			send(new ChatMsg(uid, ChatMsg.MODE_TX_WORD, msg));
 		}
-		
+
 		public void broadcasting(ChatMsg msg) {
 			for (ClientHandler c : users) {
 				c.send(msg);
 			}
 		}
-		
+
 		private void send(ChatMsg msg) {
 			try {
 				out.writeObject(msg);
@@ -319,11 +326,11 @@ public class TypingGameServer extends JFrame {
 			} catch (IOException e) {
 				System.err.println("클라이언트 일반 전송 오류> " + e.getMessage());
 			}
-		
+
 		}
 
 		@Override
-		public void run() {		
+		public void run() {
 			receiveMessages(clientSocket);
 		}
 	}

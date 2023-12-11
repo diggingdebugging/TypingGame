@@ -33,7 +33,7 @@ public class ChatMsg implements Serializable {
 		this.mode = mode;
 	}
 	
-	public ChatMsg(int mode, String mesaage) {
+	public ChatMsg(int mode, String message) {
 		this.mode = mode;
 		this.message = message;
 	}
